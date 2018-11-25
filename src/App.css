@@ -1,0 +1,28 @@
+.App {
+  text-align: center;
+  padding-left: 30px;
+  padding-right: 20px;
+  padding-top: 8px;
+}
+
+.ModalForm {
+  padding: 20px;
+  text-align: center;
+}
+
+.Padding {
+  padding: 10px;
+}
+
+.center {
+  margin: auto;
+  width: 85%;
+}
+
+.Modal {
+  padding: 20px;
+}
+
+.ModalHeader {
+  background-color: #0dca3c;
+}
