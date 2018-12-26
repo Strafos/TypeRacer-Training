@@ -5,7 +5,8 @@ import { connect } from "react-redux";
 
 import "react-datepicker/dist/react-datepicker.css";
 
-import "./semantic/dist/semantic.min.css";
+// import "./semantic/dist/semantic.min.css";
+import "semantic-ui-css/semantic.min.css";
 import "./App.css";
 
 import TypingPage from "./screens/TypingPage/TypingPage";
