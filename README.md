@@ -1,3 +1,2 @@
-# React Boilerplate
+# TypeRacer Training
 
-Common components I use
