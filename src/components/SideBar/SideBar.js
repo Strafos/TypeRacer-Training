@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 
 import Modal from "../Modal/Modal";
 import SprintMenu from "../SprintMenu/SprintMenu";
-import TimeSpentMiniGraph from "../../screens/SprintPage/GraphDisplay/Graphs/TimeSpentMiniGraph";
 
 class SideBar extends Component {
   render() {
@@ -31,7 +30,6 @@ class SideBar extends Component {
           {selectedSprint && (
             <div>
               <br />
-              <TimeSpentMiniGraph sprint={selectedSprint} />
             </div>
           )}
         </Grid.Row>
@@ -42,8 +40,7 @@ class SideBar extends Component {
   }
 }
 
-const mapStateToProps = state => ({
-});
+const mapStateToProps = state => ({});
 
 const mapDispatchToProps = {};
 

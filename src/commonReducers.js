@@ -3,13 +3,13 @@ import { combineReducers } from "redux";
 import * as ActionTypes from "./commonConstants";
 import { asyncStateReducer } from "./utils/reduxUtils";
 
-const asyncSprintListReducer = asyncStateReducer({
-  [ActionTypes.FETCH_SPRINTS_REQUEST]: "pending",
-  [ActionTypes.FETCH_SPRINTS_FAILURE]: "error",
-  [ActionTypes.FETCH_SPRINTS_SUCCESS]: "complete",
+const asyncTextReducer = asyncStateReducer({
+  [ActionTypes.FETCH_TEXT_REQUEST]: "pending",
+  [ActionTypes.FETCH_TEXT_FAILURE]: "error",
+  [ActionTypes.FETCH_TEXT_SUCCESS]: "complete",
 });
 
-const sprintListReducer = (state, action) => {
+const textReducer = (state, action) => {
   switch (action.type) {
     // case ActionTypes.CREATE_SPRINT_SUCCESS:
     //   return {
@@ -17,10 +17,10 @@ const sprintListReducer = (state, action) => {
     //     data: [...state.data, action.responseJson],
     //   };
     default:
-      return asyncSprintListReducer(state, action);
+      return asyncTextReducer(state, action);
   }
 };
 
 export default combineReducers({
-  sprintList: sprintListReducer,
+  text: textReducer,
 });

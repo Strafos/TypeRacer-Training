@@ -4,12 +4,12 @@ import * as ActionTypes from "./commonConstants";
 
 import * as API from "./utils/api";
 
-export const getAllSprints = () =>
+export const getText = () =>
   asyncActionCreator(
     {
-      pending: ActionTypes.FETCH_SPRINTS_REQUEST,
-      complete: ActionTypes.FETCH_SPRINTS_SUCCESS,
-      error: ActionTypes.FETCH_SPRINTS_FAILURE,
+      pending: ActionTypes.FETCH_TEXT_REQUEST,
+      complete: ActionTypes.FETCH_TEXT_SUCCESS,
+      error: ActionTypes.FETCH_TEXT_FAILURE,
     },
-    API.getSprints
+    API.getText
   )();

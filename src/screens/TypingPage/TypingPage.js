@@ -1,461 +1,171 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import {
-  Modal,
-  Grid,
-  Input,
-  Icon,
-  Button,
-  Form,
-  TextArea,
-  Message,
-  Header,
-} from "semantic-ui-react";
-import { Link } from "react-router-dom";
+import { Input, Button, Form, Container, Segment } from "semantic-ui-react";
 
 import "./TypingPage.css";
 
-import StatusDisplay from "../../components/Status/StatusDisplay";
-// import SprintDropDown from "../../components/Modal/IssueModal/SprintDropDown";
-// import SprintDropDown from "../../components/SprintDropDown/SprintDropDown";
-// import ProjectDropDown from "../../components/ProjectDropDown/ProjectDropDown";
+import { getText, createLog } from "../../utils/api";
+import { cleanNumber } from "../../utils/arithUtils";
 
-import {
-  getIssue,
-  updateIssue,
-  deleteIssue,
-  createTimeLog,
-} from "../../utils/api";
+const charPerWord = 5;
+const secondsPerMinute = 60;
 
-class IssueDisplay extends Component {
+class TypingPage extends Component {
   state = {
-    selectedIssue: null,
-    editName: false,
-    issueId: 0,
-    name: "",
-    sprintId: 0,
-    projectId: 0,
-    status: "",
-    timeEstimate: 0,
-    timeSpent: 0,
-    timeSpentDelta: 0,
-    timeRemaining: 0,
-    timeRemainingDelta: 0,
-    notes: "",
-    blocked: "false",
-    modalOpen: false,
-    showMessage: false,
-    message: "",
+    index: 0,
+    done: false,
+    currWrong: false,
+    startTime: null,
+    endTime: null,
+    id: "",
+    text: "",
+    typedText: "",
+    gameType: "sudden death",
   };
 
   componentDidMount() {
-    const issueId = this.props.match.params.id;
-
-    getIssue(issueId).then(issues => {
-      const issue = issues[0];
-      this.setState({
-        selectedIssue: issue,
-        issueId: issueId,
-
-        name: issue.name,
-        sprintId: issue.sprint_id,
-        projectId: issue.project_id,
-        status: issue.status,
-        timeEstimate: issue.time_estimate,
-        timeSpent: issue.time_spent,
-        timeRemaining: issue.time_remaining,
-        notes: issue.notes,
-        blocked: issue.blocked,
-        bad: issue.bad,
-      });
-    });
+    this.newText();
   }
 
-  componentWillReceiveProps(nextProps) {
-    const issueId = nextProps.match.params.id;
-
-    getIssue(issueId).then(issues => {
-      const issue = issues[0];
+  newText = () => {
+    getText().then(typetext => {
       this.setState({
-        selectedIssue: issue,
-        issueId: issueId,
-
-        name: issue.name,
-        sprintId: issue.sprint_id,
-        projectId: issue.project_id,
-        status: issue.status,
-        timeEstimate: issue.time_estimate,
-        timeSpent: issue.time_spent,
-        timeRemaining: issue.time_remaining,
-        notes: issue.notes,
-        blocked: issue.blocked,
-        bad: issue.bad,
+        text: typetext.text.split(" "),
+        title: typetext.pagename,
+        id: typetext.id,
+        index: 0,
+        done: false,
+        currWrong: false,
+        startTime: null,
+        endTime: null,
+        typedText: "",
       });
     });
-  }
-
-  handleSubmit = () => {
-    const {
-      issueId,
-      name,
-      sprintId,
-      projectId,
-      status,
-      timeEstimate,
-      timeRemaining,
-      timeSpent,
-      notes,
-      blocked,
-      bad,
-      timeSpentDelta,
-      timeRemainingDelta,
-    } = this.state;
-
-    const requestObj = {
-      name,
-      sprintId,
-      projectId,
-      status,
-      timeEstimate,
-      timeRemaining,
-      timeSpent,
-      notes,
-      blocked,
-      bad,
-    };
-
-    // Save the updated issue in table
-    updateIssue(requestObj, issueId).then(res => {
-      if (!res || res.status !== "Success") {
-        this.props.error("Failed to update issue");
-      } else {
-        this.setState({
-          showMessage: true,
-          message: "Issue updated successfully :P",
-        });
-        this.timeout = setTimeout(() => {
-          this.setState({ showMessage: false });
-        }, 2500);
-      }
-    });
-
-    // Add a timelog if time changed
-    const timeSpentRequestObj = {
-      issueId,
-      delta: timeSpentDelta,
-      stat: "time_spent",
-      createdAt: new Date().toISOString(),
-      total: timeSpent,
-    };
-    timeSpentDelta > 0 && !bad && createTimeLog(timeSpentRequestObj);
-
-    // Add a timelog if time changed
-    const timeRemainingRequestObj = {
-      issueId,
-      delta: this.state.timeRemainingDelta,
-      stat: "time_remaining",
-      createdAt: new Date().toISOString(),
-      total: timeRemaining,
-    };
-    timeRemainingDelta !== 0 && createTimeLog(timeRemainingRequestObj);
-
-    // Reset time change
-    this.setState({
-      timeSpentDelta: 0,
-      timeRemainingDelta: 0,
-    });
+    this.input.focus();
   };
 
-  handleDelete = () => {
-    this.handleModalClose();
-    deleteIssue(this.state.issueId).then(res => {
-      if (!res || res.status !== "Success") {
-        this.props.error("Failed to delete issue");
-      }
-    });
-  };
-
-  handleModalOpen = () => {
-    this.setState({
-      modalOpen: true,
-    });
-  };
-
-  handleModalClose = () => {
-    this.setState({
-      modalOpen: false,
-    });
-  };
-
-  handleSprintSelect = (event, { value }) => {
-    this.setState({
-      sprintId: value,
-    });
-  };
-
-  handleProjectSelect = (event, { value }) => {
-    this.setState({
-      projectId: value,
-    });
-  };
-
-  handleName = (event, { value }) => {
-    this.setState({
-      name: value,
-    });
-  };
-
-  handleNotes = (event, { value }) => {
-    this.setState({
-      notes: value,
-    });
-  };
-
-  handleEditName = () => {
-    this.setState({
-      editName: true,
-    });
-  };
-
-  handleTimeRemaining = (event, { value }) => {
-    const { timeRemaining, timeRemainingDelta } = this.state;
-    const time = parseInt(value, 10) || 0;
-    this.setState({
-      timeRemainingDelta: timeRemainingDelta + time - timeRemaining,
-      timeRemaining: time,
-    });
-  };
-
-  handleTimeSpent = (event, { value }) => {
-    const { timeSpent, timeSpentDelta } = this.state;
-    const time = parseInt(value, 10) || 0;
-    this.setState({
-      timeSpentDelta: timeSpentDelta + time - timeSpent,
-      timeSpent: time,
-    });
-  };
-
-  handleTimeEstimate = (event, { value }) => {
-    this.setState({
-      timeEstimate: value,
-    });
-  };
-
-  handleBlockedChange = () => {
-    this.setState({
-      blocked: this.state.blocked === "true" ? "false" : "true",
-    });
-  };
-
-  handleStatusChange = (event, { name }) => {
-    this.setState({
-      status: name,
-    });
-  };
-
-  handleMessageClose = () => {
-    this.setState({
-      showMessage: false,
-    });
-    clearTimeout(this.timeout);
-  };
-
-  renderTextArea = () => {
-    return (
-      <TextArea
-        onChange={this.handleNotes}
-        style={{
-          minHeight: 250,
-          backgroundColor: "#282828",
-          color: "#BEBEBE",
-          fontSize: 17,
-        }}
-        placeholder="Issue notes..."
-        value={this.state.notes}
-      />
+  getWpm = () => {
+    const { startTime, endTime, text, index } = this.state;
+    const totalTime = ((endTime || new Date()) - startTime) / 1000;
+    const letters = text
+      .slice(0, Math.max(0, index))
+      .reduce((acc, curr) => acc + curr.length, 0);
+    return cleanNumber(
+      (letters / totalTime / charPerWord) * secondsPerMinute,
+      2
     );
   };
 
+  sendLog = () => {
+    const { gameType, id, index, text } = this.state;
+    const completion = (index === text.length - 1) | 0;
+    const wpm = this.getWpm();
+    if (wpm > 30) {
+      const logObj = {
+        contentId: id,
+        date: new Date().toISOString(),
+        wpm: wpm.toString(),
+        type: gameType,
+        complete: completion,
+      };
+      createLog(logObj);
+    }
+  };
+
+  handleTypedText = (event, { value }) => {
+    const { index, startTime, text, gameType } = this.state;
+    if (startTime === null) {
+      this.setState({
+        startTime: new Date(),
+      });
+    }
+    if (value === text[index] + " ") {
+      this.setState({
+        index: index + 1,
+        typedText: "",
+        currWrong: false,
+      });
+    } else if (index === text.length - 1 && value === text[index]) {
+      this.setState({
+        index: index + 1,
+        typedText: "",
+        currWrong: false,
+        done: true,
+        endTime: new Date(),
+      });
+      this.sendLog();
+    } else if (gameType === "sudden death" && !text[index].startsWith(value)) {
+      this.setState({
+        typedText: value,
+        currWrong: true,
+        done: true,
+        endTime: new Date(),
+      });
+      console.log("sd death");
+      this.sendLog();
+    } else {
+      this.setState({
+        typedText: value,
+        currWrong: !text[index].startsWith(value),
+        done: !text[index].startsWith(value),
+        endTime: !text[index].startsWith(value) ? new Date() : null,
+      });
+    }
+  };
+
   render() {
-    const {
-      editName,
-      name,
-      sprintId,
-      projectId,
-      status,
-      timeEstimate,
-      timeRemaining,
-      timeSpent,
-      blocked,
-      modalOpen,
-      showMessage,
-      bad,
-    } = this.state;
-    const { sprintList, projectList } = this.props;
+    const { index, typedText, currWrong, done, text } = this.state;
+
+    const wrong = { backgroundColor: "red" };
+    const correct = { backgroundColor: "green" };
+
+    let prev = "";
+    let curr = "";
+    let next = "";
+    if (text) {
+      prev = text.slice(0, index).join(" ") + " ";
+      curr = text[index];
+      next = " " + text.slice(index + 1, text.length).join(" ");
+    }
 
     return (
-      <div>
-        <Message
-          hidden={!showMessage}
-          positive
-          onDismiss={this.handleMessageClose}
-        >
-          <Message.Header>{this.state.message}</Message.Header>
-        </Message>
-        <div className="Left">
-          {editName ? (
-            <Form>
-              <Form.Field inline>
-                <Input
-                  value={name}
-                  size="tiny"
-                  type="text"
-                  onChange={this.handleName}
-                />
-              </Form.Field>
-            </Form>
-          ) : (
-            <Header as="h1">
-              <Header.Content>
-                {name}
-                <Icon
-                  className="super"
-                  name="edit"
-                  size="mini"
-                  fitted
-                  onClick={this.handleEditName}
-                />
-              </Header.Content>
-            </Header>
-          )}
-        </div>
-
-        <Form className="Left">
-          <Form.Field width={3}>
-            <label>Sprint</label>
-          </Form.Field>
-
-          <Form.Field width={3}>
-            <label>Project</label>
-
-          </Form.Field>
-
+      <Container>
+        <Segment style={{ fontSize: "25px" }} textAlign="left">
+          <p>
+            <span>{prev}</span>
+            <span style={currWrong ? wrong : correct}>{curr}</span>
+            <span>{next}</span>
+          </p>
+        </Segment>
+        <Form>
           <Form.Field>
-            <label>Type</label>
-            <Button.Group>
-              <Button
-                color={!bad ? "red" : "black"}
-                onClick={() => this.setState({ bad: 0 })}
-              >
-                <Icon color={!bad ? "black" : "red"} name="thumbs up" />
-              </Button>
-
-              <Button.Or />
-
-              <Button
-                color={bad ? "red" : "black"}
-                onClick={() => this.setState({ bad: 1 })}
-              >
-                <Icon color={bad ? "black" : "red"} name="thumbs down" />
-              </Button>
-            </Button.Group>
-          </Form.Field>
-
-          <Form.Field width={3}>
-            <label>Status</label>
-            <StatusDisplay
-              statusChange={this.handleStatusChange}
-              blockedChange={this.handleBlockedChange}
-              blocked={blocked === "true"}
-              status={status}
+            <Input
+              size="large"
+              style={{ fontSize: "25px" }}
+              disabled={done}
+              type="text"
+              value={typedText}
+              onChange={this.handleTypedText}
+              ref={input => {
+                this.input = input;
+              }}
             />
           </Form.Field>
-          <Form.Group widths="equal">
-            <Form.Input
-              fluid
-              label="Time Spent"
-              value={timeSpent}
-              onChange={this.handleTimeSpent}
-            />
-            <Form.Input
-              fluid
-              label="Time Remaining"
-              value={timeRemaining}
-              onChange={this.handleTimeRemaining}
-            />
-            <Form.Input
-              fluid
-              label="Time Estimate"
-              value={timeEstimate}
-              onChange={this.handleTimeEstimate}
-            />
-          </Form.Group>
         </Form>
-
-        <Form className="Left">
-          <Form.Field control={this.renderTextArea} label="Issue Notes" />
-        </Form>
-        <br />
-
-        <Grid columns={2}>
-          <Grid.Column className="Left" width={8}>
-            <Button onClick={this.handleSubmit} color="black">
-              Save Changes
-            </Button>
-          </Grid.Column>
-          <Grid.Column className="Right" width={8}>
-            <Modal
-              basic
-              size="small"
-              open={modalOpen}
-              onClose={this.handleModalClose}
-              trigger={
-                <Button color="red" onClick={this.handleModalOpen}>
-                  Delete Issue
-                </Button>
-              }
-            >
-              <Header icon="trash alternate outline" content="Delete Issue" />
-
-              <Modal.Content>
-                <p>Are you sure you want to delete this issue?</p>
-              </Modal.Content>
-
-              <Modal.Actions>
-                <Button
-                  basic
-                  color="red"
-                  inverted
-                  onClick={this.handleModalClose}
-                >
-                  <Icon name="remove" /> No
-                </Button>
-                <Button
-                  as={Link}
-                  to="/"
-                  color="green"
-                  inverted
-                  onClick={this.handleDelete}
-                >
-                  <Icon name="checkmark" /> Yes
-                </Button>
-              </Modal.Actions>
-            </Modal>
-          </Grid.Column>
-        </Grid>
-      </div>
+        {done && <p>{this.getWpm()} wpm</p>}
+        <Button disabled={!done} color="green" onClick={this.newText}>
+          New Text
+        </Button>
+      </Container>
     );
   }
 }
 
-const mapStateToProps = state => ({
-  projectList: state.commonData.projects.data || [],
-  sprintList: state.commonData.sprintList.data || [],
-});
+const mapStateToProps = state => ({});
 
 const mapDispatchToProps = {};
 
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(IssueDisplay);
+)(TypingPage);
