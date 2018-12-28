@@ -1,6 +1,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Input, Button, Form, Container, Segment } from "semantic-ui-react";
+import { HotKeys } from "react-hotkeys";
+import Mousetrap from "mousetrap";
 
 import "./TypingPage.css";
 
@@ -26,7 +28,20 @@ class TypingPage extends Component {
 
   componentDidMount() {
     this.newText();
+    this.input.focus();
+    Mousetrap.bind(["r"], this.retry);
+    Mousetrap.bind(["n"], this.newText);
   }
+
+  retry = () => {
+    // Retry the current text
+    this.setState({
+      index: 0,
+      typedText: "",
+      done: false,
+      currWrong: false,
+    });
+  };
 
   newText = () => {
     getText().then(typetext => {
@@ -44,7 +59,6 @@ class TypingPage extends Component {
         typedText: "",
       });
     });
-    this.input.focus();
   };
 
   getWpm = () => {
@@ -60,7 +74,7 @@ class TypingPage extends Component {
   };
 
   sendLog = () => {
-    const { gameType, id, index, text, retry } = this.state;
+    const { gameType, id, index, text } = this.state;
     const completion = (index === text.length - 1) | 0;
     const wpm = this.getWpm();
     if (wpm > 30) {
@@ -72,6 +86,7 @@ class TypingPage extends Component {
         complete: completion,
       };
       createLog(logObj);
+      console.log("Log sent");
     }
   };
 
