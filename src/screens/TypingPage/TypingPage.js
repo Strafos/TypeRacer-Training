@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Input, Button, Form, Container, Segment } from "semantic-ui-react";
-import { HotKeys } from "react-hotkeys";
 import Mousetrap from "mousetrap";
 
 import "./TypingPage.css";
@@ -40,6 +39,7 @@ class TypingPage extends Component {
       typedText: "",
       done: false,
       currWrong: false,
+      startTime: null,
     });
   };
 
