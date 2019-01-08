@@ -37,7 +37,7 @@ app.put("/Log", (req, res) => {
 });
 
 // GET RandomText
-app.get("/RandomText", (req, res) => {
+app.get("/Text", (req, res) => {
   let query = `SELECT id, pagename, text FROM content ORDER BY RANDOM() LIMIT 1`;
   db.read(query)
     .then(response => {
@@ -49,8 +49,8 @@ app.get("/RandomText", (req, res) => {
 });
 
 // DELETE example
-app.delete("/Issue/:id", (req, res) => {
-  const query = `DELETE FROM issues where id=${req.params.id}`;
+app.delete("/Text/:id", (req, res) => {
+  const query = `DELETE FROM content where id=${req.params.id}`;
   db.insert(query)
     .then(() => {
       res.send({ status: "Success" });
