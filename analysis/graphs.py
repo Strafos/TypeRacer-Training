@@ -1,41 +1,27 @@
 import os
 import datetime
 import re
+import dateutil.parser
 from pprint import pprint
 from tabulate import tabulate
 from collections import defaultdict
 from itertools import combinations
 
+import sqlite3
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.dates import date2num
 
-import sqlite3
+from helpers import bucket_datetime
 
-
-def _graph_stat(data, stat="Messages", period="Month", name="total", message_data=None):
-    """
-    The real graph stat function
-    Graph parameterized stat from get_all_stats
-    """
-
-    # Parse data and sort by dates
-    if not message_data:
-        message_data = data[stat][period][name]
-    dates = date2num(list(message_data.keys()))
-    counts = np.array(list(message_data.values()))
-    dates, counts = zip(*sorted(zip(dates, counts)))
-
-    ### BAR GRAPH ###
-    bar = plt.bar(dates, counts, )
-    # bar = plt.bar(dates, counts, width=width_dict[period])
-    ax = plt.subplot(111)
-    ax.xaxis_date()
+DATABASE_PATH = '/home/zaibo/sample.db'
 
 
 class SQL():
+    """SQLite interface for database"""
+
     def __init__(self):
-        self.conn = sqlite3.connect('/home/zaibo/sample.db')
+        self.conn = sqlite3.connect(DATABASE_PATH)
         # self.conn = sqlite3.connect('/home/zaibo/code/type/db/typetext.db')
         self.cursor = self.conn.cursor()
 
@@ -45,6 +31,59 @@ class SQL():
         return self.cursor.fetchall()
 
 
+def graph_data(dates, wpms):
+
+    ### BAR GRAPH ###
+    bar = plt.bar(dates, wpms, width=.5)
+    # bar = plt.bar(dates, counts, width=width_dict[period])
+    ax = plt.subplot(111)
+    ax.xaxis_date()
+
+
+def process_data(data):
+    # Do not weight WPM by text length
+    # Graph WPM
+    if len(data) < 1:
+        raise Exception("No data to process")
+    processed = []
+
+    log_id, content_id, date, wpm, race_type, complete = data[0]
+
+    curr_date = bucket_datetime(dateutil.parser.parse(date), "Day")
+    row_counter = 1
+    tot_wpm = int(wpm)
+    counter = 1
+    while counter < len(data):
+        log_id, content_id, date, wpm, race_type, complete = data[counter]
+
+        # Turn date into datetime object
+        dt_date = bucket_datetime(dateutil.parser.parse(date), "Day")
+
+        while dt_date == curr_date:
+            tot_wpm += int(wpm)
+            row_counter += 1
+            counter += 1
+
+            if counter == len(data):
+                break
+
+            log_id, content_id, date, wpm, race_type, complete = data[counter]
+            dt_date = bucket_datetime(dateutil.parser.parse(date), "Day")
+
+        processed.append((curr_date, tot_wpm/row_counter))
+        tot_wpm = int(wpm)
+        curr_date = dt_date
+        row_counter = 1
+
+    dates, wpms = zip(*sorted(processed))
+    return dates, wpms
+
+
+"""Currently this graphs unweighted wpm per day for normal"""
+
 sql = SQL()
-log_data = sql.select("SELECT * FROM LOG")
-print(len(log_data))
+log_data = sql.select("SELECT * FROM Log WHERE type='normal'")
+dates, wpms = process_data(log_data)
+graph_data(dates, wpms)
+
+plt.show(block=True)
