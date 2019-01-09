@@ -86,6 +86,9 @@ class TypingPage extends Component {
 
   sendLog = () => {
     const { gameType, id, index, text } = this.state;
+    if (gameType === "practice") {
+      return;
+    }
     const completion = (index === text.length - 1) | 0;
     const wpm = this.getWpm();
     if (wpm > 30) {
@@ -243,6 +246,16 @@ class TypingPage extends Component {
               name="checkboxRadioGroup"
               value="normal"
               checked={this.state.gameType === "normal"}
+              onChange={this.handleGameChange}
+            />
+          </Form.Field>
+          <Form.Field>
+            <Checkbox
+              radio
+              label="Practice Mode"
+              name="checkboxRadioGroup"
+              value="practice"
+              checked={this.state.gameType === "practice"}
               onChange={this.handleGameChange}
             />
           </Form.Field>
