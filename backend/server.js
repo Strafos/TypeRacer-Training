@@ -48,6 +48,32 @@ app.get("/Text", (req, res) => {
     });
 });
 
+// GET GhostRandomText
+// Text that already has been typed
+app.get("/GhostText", (req, res) => {
+  const query1 =
+    `SELECT DISTINCT log.content_id, content.pagename, content.text ` +
+    `FROM content INNER JOIN log ON content.id = log.content_id AND log.type = 'normal' ORDER BY RANDOM() LIMIT 1`;
+  db.read(query1)
+    .then(response1 => {
+      // res.send(response1[0]);
+      const { content_id } = response1[0];
+      const query2 = `SELECT * FROM log WHERE content_id = (?) AND type = 'normal'`;
+      db.insert(query2, [content_id])
+        .then(response2 => {
+          response1[0]["data"] = response2;
+          console.log(response1[0]);
+          res.send(response1[0]);
+        })
+        .catch(err => {
+          console.log(err);
+        });
+    })
+    .catch(err => {
+      console.log(err);
+    });
+});
+
 // DELETE example
 app.delete("/Text/:id", (req, res) => {
   const query = `DELETE FROM content where id=${req.params.id}`;
@@ -57,6 +83,23 @@ app.delete("/Text/:id", (req, res) => {
     })
     .catch(err => {
       res.send({ status: "Failure" });
+    });
+});
+
+// get past typing data
+app.get("/Log/:id", (req, res) => {
+  const query = `SELECT * FROM log WHERE content_id = (?) AND type = 'normal'`;
+  db.insert(query, [req.params.id])
+    .then(response => {
+      console.log(response);
+      if (response.length > 0) {
+        res.send(response);
+      } else {
+        res.send([]);
+      }
+    })
+    .catch(err => {
+      res.send(err);
     });
 });
 

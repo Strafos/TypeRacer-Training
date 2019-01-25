@@ -7,12 +7,19 @@ import {
   Form,
   Container,
   Segment,
+  Table,
 } from "semantic-ui-react";
 import Mousetrap from "mousetrap";
 
 import "./TypingPage.css";
 
-import { getText, createLog, deleteText } from "../../utils/api";
+import {
+  getText,
+  getGhostText,
+  getLogs,
+  createLog,
+  deleteText,
+} from "../../utils/api";
 import { cleanNumber } from "../../utils/arithUtils";
 
 const charPerWord = 5;
@@ -30,6 +37,7 @@ class TypingPage extends Component {
     typedText: "",
     autoRetry: false,
     gameType: "normal",
+    pastLogs: null,
   };
 
   componentDidMount() {
@@ -55,19 +63,40 @@ class TypingPage extends Component {
   };
 
   newText = () => {
-    getText().then(typetext => {
-      this.setState({
-        text: typetext.text.split(" ").filter(el => el !== ""),
-        title: typetext.pagename,
-        id: typetext.id,
-        index: 0,
-        done: false,
-        currWrong: false,
-        startTime: null,
-        endTime: null,
-        typedText: "",
+    const { gameType } = this.state;
+    if (gameType === "ghost") {
+      getGhostText().then(typetext => {
+        this.setState({
+          text: typetext.text.split(" ").filter(el => el !== ""),
+          title: typetext.pagename,
+          id: typetext.id,
+          index: 0,
+          done: false,
+          currWrong: false,
+          startTime: null,
+          endTime: null,
+          typedText: "",
+          pastLogs: typetext.data,
+        });
       });
-    });
+    } else {
+      getText().then(typetext => {
+        getLogs(typetext.id).then(data => {
+          this.setState({
+            text: typetext.text.split(" ").filter(el => el !== ""),
+            title: typetext.pagename,
+            id: typetext.id,
+            index: 0,
+            done: false,
+            currWrong: false,
+            startTime: null,
+            endTime: null,
+            typedText: "",
+            pastLogs: data,
+          });
+        });
+      });
+    }
   };
 
   getWpm = () => {
@@ -163,13 +192,49 @@ class TypingPage extends Component {
       this.setState({
         typedText: value,
         currWrong: !text[index].startsWith(value),
-        // done: !text[index].startsWith(value),
-        // endTime: !text[index].startsWith(value) ? new Date() : null,
       });
     }
   };
 
   handleGameChange = (e, { value }) => this.setState({ gameType: value });
+
+  renderHistoryRow = log => {
+    return (
+      <Table.Body key={log.id}>
+        <Table.Row>
+          <Table.Cell>{log.date}</Table.Cell>
+          <Table.Cell>{log.wpm}</Table.Cell>
+          <Table.Cell>{log.type}</Table.Cell>
+        </Table.Row>
+      </Table.Body>
+    );
+  };
+
+  renderHistoryTable = () => {
+    const { pastLogs } = this.state;
+    console.log(pastLogs);
+    let totalWPM = 0;
+    pastLogs.map(log => (totalWPM = totalWPM + parseInt(log.wpm)));
+    return (
+      <Table sortable fixed celled size="large" compact>
+        <Table.Header>
+          <Table.Row>
+            <Table.HeaderCell>Date</Table.HeaderCell>
+            <Table.HeaderCell>Wpm</Table.HeaderCell>
+            <Table.HeaderCell>Type</Table.HeaderCell>
+          </Table.Row>
+        </Table.Header>
+        {pastLogs.map(this.renderHistoryRow)}
+        <Table.Footer fullWidth>
+          <Table.Row>
+            <Table.HeaderCell textAlign="center" colSpan="3">
+              {`Average WPM: ${totalWPM / pastLogs.length}`}
+            </Table.HeaderCell>
+          </Table.Row>
+        </Table.Footer>
+      </Table>
+    );
+  };
 
   render() {
     const { index, typedText, currWrong, done, text, title, id } = this.state;
@@ -185,6 +250,7 @@ class TypingPage extends Component {
       curr = text[index];
       next = " " + text.slice(index + 1, text.length).join(" ");
     }
+    console.log(this.state.pastLogs);
 
     return (
       <Container>
@@ -218,6 +284,10 @@ class TypingPage extends Component {
           </Form.Field>
         </Form>
         {done && <p>{this.getWpm()} wpm</p>}
+        {this.state.pastLogs &&
+          this.state.pastLogs.length > 0 &&
+          this.renderHistoryTable()}
+        {/* {done && this.state.pastLogs && this.renderHistory()} */}
         <br />
         <Button disabled={!done} color="green" onClick={this.newText}>
           New Text
@@ -256,6 +326,16 @@ class TypingPage extends Component {
               name="checkboxRadioGroup"
               value="practice"
               checked={this.state.gameType === "practice"}
+              onChange={this.handleGameChange}
+            />
+          </Form.Field>
+          <Form.Field>
+            <Checkbox
+              radio
+              label="Ghost Mode"
+              name="checkboxRadioGroup"
+              value="ghost"
+              checked={this.state.gameType === "ghost"}
               onChange={this.handleGameChange}
             />
           </Form.Field>
