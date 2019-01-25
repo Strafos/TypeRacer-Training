@@ -9,6 +9,7 @@ import {
   Segment,
   Table,
 } from "semantic-ui-react";
+import TimeAgo from "react-timeago";
 import Mousetrap from "mousetrap";
 
 import "./TypingPage.css";
@@ -69,7 +70,7 @@ class TypingPage extends Component {
         this.setState({
           text: typetext.text.split(" ").filter(el => el !== ""),
           title: typetext.pagename,
-          id: typetext.id,
+          id: typetext.content_id,
           index: 0,
           done: false,
           currWrong: false,
@@ -118,6 +119,7 @@ class TypingPage extends Component {
     if (gameType === "practice") {
       return;
     }
+    const semanticGameType = gameType === "ghost" ? "normal" : gameType;
     const completion = (index === text.length - 1) | 0;
     const wpm = this.getWpm();
     if (wpm > 30) {
@@ -125,11 +127,12 @@ class TypingPage extends Component {
         contentId: id,
         date: new Date().toISOString(),
         wpm: wpm.toString(),
-        type: gameType,
+        type: semanticGameType,
         complete: completion,
       };
       createLog(logObj);
       console.log("Log sent");
+      console.log(logObj);
     }
   };
 
@@ -202,9 +205,11 @@ class TypingPage extends Component {
     return (
       <Table.Body key={log.id}>
         <Table.Row>
-          <Table.Cell>{log.date}</Table.Cell>
+          <Table.Cell>
+            <TimeAgo date={log.date} />
+          </Table.Cell>
           <Table.Cell>{log.wpm}</Table.Cell>
-          <Table.Cell>{log.type}</Table.Cell>
+          <Table.Cell>{log.date}</Table.Cell>
         </Table.Row>
       </Table.Body>
     );
@@ -212,16 +217,19 @@ class TypingPage extends Component {
 
   renderHistoryTable = () => {
     const { pastLogs } = this.state;
-    console.log(pastLogs);
     let totalWPM = 0;
     pastLogs.map(log => (totalWPM = totalWPM + parseInt(log.wpm)));
+    // NEED TO DEBUG
+    // const totalWPM = pastLogs.reduce(
+    //   (log1, log2) => {parseInt(log1.wpm) + parseInt(log2.wpm)}
+    // );
     return (
       <Table sortable fixed celled size="large" compact>
         <Table.Header>
           <Table.Row>
-            <Table.HeaderCell>Date</Table.HeaderCell>
+            <Table.HeaderCell>Time Ago</Table.HeaderCell>
             <Table.HeaderCell>Wpm</Table.HeaderCell>
-            <Table.HeaderCell>Type</Table.HeaderCell>
+            <Table.HeaderCell>Date</Table.HeaderCell>
           </Table.Row>
         </Table.Header>
         {pastLogs.map(this.renderHistoryRow)}
@@ -250,7 +258,6 @@ class TypingPage extends Component {
       curr = text[index];
       next = " " + text.slice(index + 1, text.length).join(" ");
     }
-    console.log(this.state.pastLogs);
 
     return (
       <Container>
@@ -261,7 +268,7 @@ class TypingPage extends Component {
             <span>{"ID: " + id}</span>
           </p>
         </Segment>
-        <Segment style={{ fontSize: "25px" }} textAlign="left">
+        <Segment style={{ fontSize: "30px" }} textAlign="left">
           <p>
             <span>{prev}</span>
             <span style={currWrong ? wrong : correct}>{curr}</span>
@@ -283,11 +290,11 @@ class TypingPage extends Component {
             />
           </Form.Field>
         </Form>
-        {done && <p>{this.getWpm()} wpm</p>}
-        {this.state.pastLogs &&
+        {done && <p style={{ fontSize: "25px" }}>{this.getWpm()} wpm</p>}
+        {done &&
+          this.state.pastLogs &&
           this.state.pastLogs.length > 0 &&
           this.renderHistoryTable()}
-        {/* {done && this.state.pastLogs && this.renderHistory()} */}
         <br />
         <Button disabled={!done} color="green" onClick={this.newText}>
           New Text
