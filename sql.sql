@@ -17,3 +17,16 @@ CREATE TABLE log (
  type text NOT NULL,
  complete integer
 );
+
+CREATE TABLE train_sess (
+  id integer PRIMARY KEY AUTOINCREMENT,
+  date text NOT NULL,
+  practice_ids text NOT NULL,
+  practice_wpm text NOT NULL,
+  train_ids text NOT NULL,
+  train_wpm text NOT NULL,
+  test_ids text NOT NULL,
+  test_wpm text NOT NULL,
+  test_wpm_delta integer NOT NULL,
+  total_wpm text NOT NULL
+)
