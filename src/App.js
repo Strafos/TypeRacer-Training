@@ -9,6 +9,7 @@ import "semantic-ui-css/semantic.min.css";
 import "./App.css";
 
 import TypingPage from "./screens/TypingPage/TypingPage";
+import TrainingPage from "./screens/TrainingPage/TrainingPage";
 
 class App extends Component {
   state = {};
@@ -26,6 +27,13 @@ class App extends Component {
                 path="/"
                 render={props => {
                   return <TypingPage {...props} />;
+                }}
+              />
+              <Route
+                exact
+                path="/training"
+                render={props => {
+                  return <TrainingPage {...props} />;
                 }}
               />
             </Grid.Column>

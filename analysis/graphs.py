@@ -14,7 +14,7 @@ from matplotlib.dates import date2num
 
 from helpers import bucket_datetime
 
-DATABASE_PATH = '/home/zaibo/sample.db'
+DATABASE_PATH = '/home/zaibo/code/type/db/typetext.db'
 
 
 class SQL():
@@ -34,8 +34,8 @@ class SQL():
 def graph_data(dates, wpms):
 
     ### BAR GRAPH ###
-    bar = plt.bar(dates, wpms, width=.5)
-    # bar = plt.bar(dates, counts, width=width_dict[period])
+    bar = plt.plot(dates, wpms)
+    # bar = plt.bar(dates, wpms, width=.5)
     ax = plt.subplot(111)
     ax.xaxis_date()
 
@@ -82,7 +82,7 @@ def process_data(data):
 """Currently this graphs unweighted wpm per day for normal"""
 
 sql = SQL()
-log_data = sql.select("SELECT * FROM Log WHERE type='normal'")
+log_data = sql.select("SELECT * FROM log WHERE type='normal'")
 dates, wpms = process_data(log_data)
 graph_data(dates, wpms)
 
