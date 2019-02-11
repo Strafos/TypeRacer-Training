@@ -12,7 +12,7 @@ import {
 import TimeAgo from "react-timeago";
 import Mousetrap from "mousetrap";
 
-import "./TypingPage.css";
+import "./TrainingPage.css";
 
 import {
   getText,
@@ -39,34 +39,32 @@ class TypingPage extends Component {
     autoRetry: false,
     gameType: "normal",
     pastLogs: null,
+    phase: "Practice",
+    phaseCounter: 0,
+  };
+
+  phaseLen = {
+    Practice: 1,
+    Train: 1,
+    Test: 1,
   };
 
   componentDidMount() {
     this.newText();
     this.input.focus();
-    Mousetrap.bind(["r"], this.retry);
     Mousetrap.bind(["n"], this.newText);
     Mousetrap.bind(["esc"], () => {
-      this.retry();
       this.input.focus();
     });
   }
 
-  retry = () => {
-    // Retry the current text
-    this.setState({
-      index: 0,
-      typedText: "",
-      done: false,
-      currWrong: false,
-      startTime: null,
-    });
-  };
-
   newText = () => {
-    const { gameType } = this.state;
-    if (gameType === "ghost") {
-      getGhostText().then(typetext => {
+    const { phase, done } = this.state;
+    if (done) {
+      this.updatePhase();
+    }
+    if (phase === "Practice") {
+      getText().then(typetext => {
         this.setState({
           text: typetext.text.split(" ").filter(el => el !== ""),
           title: typetext.pagename,
@@ -77,10 +75,26 @@ class TypingPage extends Component {
           startTime: null,
           endTime: null,
           typedText: "",
-          pastLogs: typetext.data,
         });
       });
-    } else {
+    } else if (phase === "Train") {
+      getText().then(typetext => {
+        getLogs(typetext.id).then(data => {
+          this.setState({
+            text: typetext.text.split(" ").filter(el => el !== ""),
+            title: typetext.pagename,
+            id: typetext.id,
+            index: 0,
+            done: false,
+            currWrong: false,
+            startTime: null,
+            endTime: null,
+            typedText: "",
+            pastLogs: data,
+          });
+        });
+      });
+    } else if (phase === "Test") {
       getText().then(typetext => {
         getLogs(typetext.id).then(data => {
           this.setState({
@@ -115,11 +129,9 @@ class TypingPage extends Component {
   };
 
   sendLog = () => {
-    const { gameType, id, index, text } = this.state;
-    if (gameType === "practice") {
-      return;
-    }
-    const semanticGameType = gameType === "ghost" ? "normal" : gameType;
+    const { phase, id, index, text } = this.state;
+    const semanticGameType = phase === "Practice" ? "practice" : "normal";
+
     const completion = (index === text.length - 1) | 0;
     const wpm = this.getWpm();
     if (wpm > 30) {
@@ -142,15 +154,33 @@ class TypingPage extends Component {
     this.newText();
   };
 
+  updatePhase = () => {
+    const { phase, phaseCounter } = this.state;
+    const newCounter = phaseCounter + 1;
+    if (phase === "Practice" && newCounter === this.phaseLen[phase]) {
+      this.setState({
+        phase: "Train",
+        phaseCounter: 0,
+      });
+    } else if (phase === "Train" && newCounter === this.phaseLen[phase]) {
+      this.setState({
+        phase: "Test",
+        phaseCounter: 0,
+      });
+    } else if (phase === "Test" && newCounter === this.phaseLen[phase]) {
+      this.setState({
+        phase: "Review",
+        phaseCounter: 0,
+      });
+    } else {
+      this.setState({
+        phaseCounter: newCounter,
+      });
+    }
+  };
+
   handleTypedText = (event, { value }) => {
-    const {
-      typedText,
-      index,
-      startTime,
-      text,
-      gameType,
-      autoRetry,
-    } = this.state;
+    const { typedText, index, startTime, text } = this.state;
     if (startTime === null || (index === 0 && typedText === "")) {
       this.setState({
         startTime: new Date(),
@@ -175,22 +205,6 @@ class TypingPage extends Component {
         endTime: new Date(),
       });
       this.sendLog();
-    } else if (gameType === "sudden death" && !text[index].startsWith(value)) {
-      if (autoRetry) {
-        this.sendLog();
-        this.setState({
-          index: 0,
-          typedText: "",
-        });
-      } else {
-        this.setState({
-          typedText: value,
-          currWrong: true,
-          done: true,
-          endTime: new Date(),
-        });
-        this.sendLog();
-      }
     } else {
       this.setState({
         typedText: value,
@@ -198,8 +212,6 @@ class TypingPage extends Component {
       });
     }
   };
-
-  handleGameChange = (e, { value }) => this.setState({ gameType: value });
 
   renderHistoryRow = log => {
     return (
@@ -219,10 +231,6 @@ class TypingPage extends Component {
     const { pastLogs } = this.state;
     let totalWPM = 0;
     pastLogs.map(log => (totalWPM = totalWPM + parseInt(log.wpm)));
-    // NEED TO DEBUG
-    // const totalWPM = pastLogs.reduce(
-    //   (log1, log2) => {parseInt(log1.wpm) + parseInt(log2.wpm)}
-    // );
     return (
       <Table sortable fixed celled size="large" compact>
         <Table.Header>
@@ -245,7 +253,17 @@ class TypingPage extends Component {
   };
 
   render() {
-    const { index, typedText, currWrong, done, text, title, id } = this.state;
+    const {
+      index,
+      typedText,
+      currWrong,
+      done,
+      text,
+      title,
+      id,
+      phase,
+      phaseCounter,
+    } = this.state;
 
     const wrong = { backgroundColor: "red" };
     const correct = { backgroundColor: "#90ee90" };
@@ -263,6 +281,17 @@ class TypingPage extends Component {
       <Container>
         <Segment style={{ fontSize: "25px" }} textAlign="left">
           <p>
+            <span>{"Training Mode"}</span>
+            <br />
+            <span>
+              {"Current Phase: " +
+                phase +
+                " " +
+                phaseCounter +
+                "/" +
+                this.phaseLen[phase]}
+            </span>
+            <br />
             <span>{title}</span>
             <br />
             <span>{"ID: " + id}</span>
@@ -290,11 +319,11 @@ class TypingPage extends Component {
             />
           </Form.Field>
         </Form>
-        {done && <p style={{ fontSize: "25px" }}>{this.getWpm()} wpm</p>}
-        {done &&
+        {/* {done && <p style={{ fontSize: "25px" }}>{this.getWpm()} wpm</p>} */}
+        {/* {done &&
           this.state.pastLogs &&
           this.state.pastLogs.length > 0 &&
-          this.renderHistoryTable()}
+          this.renderHistoryTable()} */}
         <br />
         <Button disabled={!done} color="green" onClick={this.newText}>
           New Text
@@ -302,51 +331,6 @@ class TypingPage extends Component {
         <Button color="red" onClick={this.deleteText}>
           Delete Text
         </Button>
-        <Form>
-          <Form.Field>
-            Selected value: <b>{this.state.gameType}</b>
-          </Form.Field>
-          <Form.Field>
-            <Checkbox
-              radio
-              label="Sudden Death Mode"
-              name="checkboxRadioGroup"
-              value="sudden death"
-              checked={this.state.gameType === "sudden death"}
-              onChange={this.handleGameChange}
-            />
-          </Form.Field>
-          <Form.Field>
-            <Checkbox
-              radio
-              label="Normal Mode"
-              name="checkboxRadioGroup"
-              value="normal"
-              checked={this.state.gameType === "normal"}
-              onChange={this.handleGameChange}
-            />
-          </Form.Field>
-          <Form.Field>
-            <Checkbox
-              radio
-              label="Practice Mode"
-              name="checkboxRadioGroup"
-              value="practice"
-              checked={this.state.gameType === "practice"}
-              onChange={this.handleGameChange}
-            />
-          </Form.Field>
-          <Form.Field>
-            <Checkbox
-              radio
-              label="Ghost Mode"
-              name="checkboxRadioGroup"
-              value="ghost"
-              checked={this.state.gameType === "ghost"}
-              onChange={this.handleGameChange}
-            />
-          </Form.Field>
-        </Form>
       </Container>
     );
   }
