@@ -21,24 +21,9 @@ app.post("/Log", (req, res) => {
     });
 });
 
-// PUT example
-app.put("/Log", (req, res) => {
-  const { status } = req.body;
-  const query = `UPDATE issues SET status='${status}' where id=${
-    req.params.id
-  }`;
-  db.insert(query)
-    .then(() => {
-      res.send({ status: "Success" });
-    })
-    .catch(err => {
-      res.send({ status: "Failure" });
-    });
-});
-
 // GET RandomText
 app.get("/Text", (req, res) => {
-  let query = `SELECT id, pagename, text FROM content ORDER BY RANDOM() LIMIT 1`;
+  let query = `SELECT id, pagename, text FROM content WHERE depre = 0 ORDER BY RANDOM() LIMIT 1`;
   db.read(query)
     .then(response => {
       res.send(response[0]);
@@ -53,7 +38,7 @@ app.get("/Text", (req, res) => {
 app.get("/GhostText", (req, res) => {
   const query1 =
     `SELECT DISTINCT log.content_id, content.pagename, content.text ` +
-    `FROM content INNER JOIN log ON content.id = log.content_id AND log.type = 'normal' ORDER BY RANDOM() LIMIT 1`;
+    `FROM content INNER JOIN log ON content.id = log.content_id AND log.type = 'normal' AND content.depre = 0 ORDER BY RANDOM() LIMIT 1`;
   db.read(query1)
     .then(response1 => {
       // res.send(response1[0]);
@@ -76,7 +61,7 @@ app.get("/GhostText", (req, res) => {
 
 // DELETE example
 app.delete("/Text/:id", (req, res) => {
-  const query = `DELETE FROM content where id=${req.params.id}`;
+  const query = `UPDATE content SET depre=1 where id=${req.params.id}`;
   db.insert(query)
     .then(() => {
       res.send({ status: "Success" });
