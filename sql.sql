@@ -6,7 +6,8 @@ CREATE TABLE pages (
 CREATE TABLE content (
  id integer PRIMARY KEY AUTOINCREMENT,
  pagename integer NOT NULL,
- text text NOT NULL
+ text text NOT NULL,
+ depre integer DEFAULT 1
 );
 
 CREATE TABLE log (
