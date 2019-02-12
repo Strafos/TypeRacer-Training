@@ -3,13 +3,11 @@ import { connect } from "react-redux";
 import {
   Input,
   Button,
-  Checkbox,
   Form,
   Container,
   Segment,
   Table,
 } from "semantic-ui-react";
-import TimeAgo from "react-timeago";
 import Mousetrap from "mousetrap";
 
 import "./TrainingPage.css";
@@ -26,6 +24,7 @@ import { cleanNumber } from "../../utils/arithUtils";
 
 const charPerWord = 5;
 const secondsPerMinute = 60;
+const testing = false;
 
 class TypingPage extends Component {
   state = {
@@ -40,8 +39,7 @@ class TypingPage extends Component {
     autoRetry: false,
     gameType: "normal",
     pastLogs: null,
-    phase: "Test",
-    // phase: null,
+    phase: null,
     phaseCounter: 0,
     data: null,
     history: [],
@@ -50,14 +48,14 @@ class TypingPage extends Component {
 
   phaseLen = {
     Practice: 1,
-    Train: 1,
-    Test: 2,
+    Train: 3,
+    Test: 6,
     Review: 1,
   };
 
   componentDidMount() {
     this.newText();
-    // this.input.focus();
+    this.input.focus();
     Mousetrap.bind(["n"], this.newText);
     Mousetrap.bind(["esc"], () => {
       this.input.focus();
@@ -65,21 +63,16 @@ class TypingPage extends Component {
   }
 
   newText = () => {
-    // const { done } = this.state;
-    // const currPhase = done ? this.updatePhase() : this.state.phase;
     const currPhase = this.updatePhase();
-    console.log(currPhase);
-    // if (done) {
-    //   this.updatePhase();
-    // }
     if (currPhase === "Practice") {
       getText().then(typetext => {
         this.setState({
-          // text: typetext.text.split(" ").filter(el => el !== ""),
-          text: typetext.text
-            .slice(-5)
-            .split(" ")
-            .filter(el => el !== ""),
+          text: testing
+            ? typetext.text
+                .slice(-5)
+                .split(" ")
+                .filter(el => el !== "")
+            : typetext.text.split(" ").filter(el => el !== ""),
           title: typetext.pagename,
           id: typetext.id,
           index: 0,
@@ -94,11 +87,12 @@ class TypingPage extends Component {
       getText().then(typetext => {
         getLogs(typetext.id).then(data => {
           this.setState({
-            // text: typetext.text.split(" ").filter(el => el !== ""),
-            text: typetext.text
-              .slice(-5)
-              .split(" ")
-              .filter(el => el !== ""),
+            text: testing
+              ? typetext.text
+                  .slice(-5)
+                  .split(" ")
+                  .filter(el => el !== "")
+              : typetext.text.split(" ").filter(el => el !== ""),
             title: typetext.pagename,
             id: typetext.id,
             index: 0,
@@ -113,13 +107,13 @@ class TypingPage extends Component {
       });
     } else if (currPhase === "Test") {
       getGhostText().then(typetext => {
-        console.log(typetext.data);
         this.setState({
-          text: typetext.text
-            .slice(-5)
-            .split(" ")
-            .filter(el => el !== ""),
-          // text: typetext.text.split(" ").filter(el => el !== ""),
+          text: testing
+            ? typetext.text
+                .slice(-5)
+                .split(" ")
+                .filter(el => el !== "")
+            : typetext.text.split(" ").filter(el => el !== ""),
           title: typetext.pagename,
           id: typetext.content_id,
           index: 0,
@@ -235,10 +229,11 @@ class TypingPage extends Component {
     const trainIdArr = train.map(el => el.contentId);
     const testIdArr = test.map(el => el.contentId);
 
-    const testAvgPastWpm = test.map(
-      el =>
+    const testAvgPastWpm = test.map(el =>
+      cleanNumber(
         el.pastLogs.reduce((acc, curr) => acc + parseFloat(curr.wpm, 10), 0) /
-        el.pastLogs.length
+          el.pastLogs.length
+      )
     );
 
     const practiceIds = practiceIdArr.join(",");
@@ -246,20 +241,25 @@ class TypingPage extends Component {
     const testIds = testIdArr.join(",");
     const pastTestWpm = testAvgPastWpm.join(",");
 
-    const practiceWpm =
-      practice.reduce((acc, curr) => acc + curr.wpmFloat, 0) / practice.length;
-    const trainWpm =
-      train.reduce((acc, curr) => acc + curr.wpmFloat, 0) / train.length;
-    const testWpm =
-      test.reduce((acc, curr) => acc + curr.wpmFloat, 0) / test.length;
+    const practiceWpm = cleanNumber(
+      practice.reduce((acc, curr) => acc + curr.wpmFloat, 0) / practice.length
+    );
+    const trainWpm = cleanNumber(
+      train.reduce((acc, curr) => acc + curr.wpmFloat, 0) / train.length
+    );
+    const testWpm = cleanNumber(
+      test.reduce((acc, curr) => acc + curr.wpmFloat, 0) / test.length
+    );
 
-    const totalWpm =
-      history.reduce((acc, curr) => acc + curr.wpmFloat, 0) / history.length;
+    const totalWpm = cleanNumber(
+      history.reduce((acc, curr) => acc + curr.wpmFloat, 0) / history.length
+    );
 
-    const testWpmDelta =
+    const testWpmDelta = cleanNumber(
       (test.reduce((acc, el) => acc + el.wpmFloat, 0) -
         testAvgPastWpm.reduce((acc, el) => acc + el, 0)) /
-      test.length;
+        test.length
+    );
 
     const logObj = {
       date: new Date().toISOString(),
@@ -316,45 +316,6 @@ class TypingPage extends Component {
     }
   };
 
-  renderHistoryRow = log => {
-    return (
-      <Table.Body key={log.id}>
-        <Table.Row>
-          <Table.Cell>
-            <TimeAgo date={log.date} />
-          </Table.Cell>
-          <Table.Cell>{log.wpm}</Table.Cell>
-          <Table.Cell>{log.date}</Table.Cell>
-        </Table.Row>
-      </Table.Body>
-    );
-  };
-
-  renderHistoryTable = () => {
-    const { pastLogs } = this.state;
-    let totalWPM = 0;
-    pastLogs.map(log => (totalWPM = totalWPM + parseInt(log.wpm)));
-    return (
-      <Table sortable fixed celled size="large" compact>
-        <Table.Header>
-          <Table.Row>
-            <Table.HeaderCell>Time Ago</Table.HeaderCell>
-            <Table.HeaderCell>Wpm</Table.HeaderCell>
-            <Table.HeaderCell>Date</Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        {pastLogs.map(this.renderHistoryRow)}
-        <Table.Footer fullWidth>
-          <Table.Row>
-            <Table.HeaderCell textAlign="center" colSpan="3">
-              {`Average WPM: ${totalWPM / pastLogs.length}`}
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Footer>
-      </Table>
-    );
-  };
-
   renderReview = () => {
     const {
       trainWpm,
@@ -376,7 +337,7 @@ class TypingPage extends Component {
               <Table.HeaderCell>Test WPM Delta</Table.HeaderCell>
             </Table.Row>
           </Table.Header>
-          <Table.Body key={0}>
+          <Table.Body>
             <Table.Row>
               <Table.Cell>{trainWpm}</Table.Cell>
               <Table.Cell>{testWpm}</Table.Cell>
@@ -498,11 +459,6 @@ class TypingPage extends Component {
             {this.renderReview()}
           </div>
         )}
-        {/* {done && <p style={{ fontSize: "25px" }}>{this.getWpm()} wpm</p>} */}
-        {/* {done &&
-          this.state.pastLogs &&
-          this.state.pastLogs.length > 0 &&
-          this.renderHistoryTable()} */}
         <br />
         <Button color="red" onClick={this.deleteText}>
           Delete Text
