@@ -20,6 +20,7 @@ import {
   getLogs,
   createLog,
   deleteText,
+  createSessionLog,
 } from "../../utils/api";
 import { cleanNumber } from "../../utils/arithUtils";
 
@@ -39,19 +40,24 @@ class TypingPage extends Component {
     autoRetry: false,
     gameType: "normal",
     pastLogs: null,
-    phase: "Practice",
+    phase: "Test",
+    // phase: null,
     phaseCounter: 0,
+    data: null,
+    history: [],
+    done: false,
   };
 
   phaseLen = {
     Practice: 1,
     Train: 1,
-    Test: 1,
+    Test: 2,
+    Review: 1,
   };
 
   componentDidMount() {
     this.newText();
-    this.input.focus();
+    // this.input.focus();
     Mousetrap.bind(["n"], this.newText);
     Mousetrap.bind(["esc"], () => {
       this.input.focus();
@@ -59,16 +65,23 @@ class TypingPage extends Component {
   }
 
   newText = () => {
-    const { phase, done } = this.state;
-    if (done) {
-      this.updatePhase();
-    }
-    if (phase === "Practice") {
+    // const { done } = this.state;
+    // const currPhase = done ? this.updatePhase() : this.state.phase;
+    const currPhase = this.updatePhase();
+    console.log(currPhase);
+    // if (done) {
+    //   this.updatePhase();
+    // }
+    if (currPhase === "Practice") {
       getText().then(typetext => {
         this.setState({
-          text: typetext.text.split(" ").filter(el => el !== ""),
+          // text: typetext.text.split(" ").filter(el => el !== ""),
+          text: typetext.text
+            .slice(-5)
+            .split(" ")
+            .filter(el => el !== ""),
           title: typetext.pagename,
-          id: typetext.content_id,
+          id: typetext.id,
           index: 0,
           done: false,
           currWrong: false,
@@ -77,11 +90,15 @@ class TypingPage extends Component {
           typedText: "",
         });
       });
-    } else if (phase === "Train") {
+    } else if (currPhase === "Train") {
       getText().then(typetext => {
         getLogs(typetext.id).then(data => {
           this.setState({
-            text: typetext.text.split(" ").filter(el => el !== ""),
+            // text: typetext.text.split(" ").filter(el => el !== ""),
+            text: typetext.text
+              .slice(-5)
+              .split(" ")
+              .filter(el => el !== ""),
             title: typetext.pagename,
             id: typetext.id,
             index: 0,
@@ -94,21 +111,24 @@ class TypingPage extends Component {
           });
         });
       });
-    } else if (phase === "Test") {
-      getText().then(typetext => {
-        getLogs(typetext.id).then(data => {
-          this.setState({
-            text: typetext.text.split(" ").filter(el => el !== ""),
-            title: typetext.pagename,
-            id: typetext.id,
-            index: 0,
-            done: false,
-            currWrong: false,
-            startTime: null,
-            endTime: null,
-            typedText: "",
-            pastLogs: data,
-          });
+    } else if (currPhase === "Test") {
+      getGhostText().then(typetext => {
+        console.log(typetext.data);
+        this.setState({
+          text: typetext.text
+            .slice(-5)
+            .split(" ")
+            .filter(el => el !== ""),
+          // text: typetext.text.split(" ").filter(el => el !== ""),
+          title: typetext.pagename,
+          id: typetext.content_id,
+          index: 0,
+          done: false,
+          currWrong: false,
+          startTime: null,
+          endTime: null,
+          typedText: "",
+          pastLogs: typetext.data,
         });
       });
     }
@@ -129,23 +149,30 @@ class TypingPage extends Component {
   };
 
   sendLog = () => {
-    const { phase, id, index, text } = this.state;
+    const { phase, id, index, text, history, pastLogs } = this.state;
     const semanticGameType = phase === "Practice" ? "practice" : "normal";
 
     const completion = (index === text.length - 1) | 0;
     const wpm = this.getWpm();
-    if (wpm > 30) {
-      const logObj = {
-        contentId: id,
-        date: new Date().toISOString(),
-        wpm: wpm.toString(),
-        type: semanticGameType,
-        complete: completion,
-      };
-      createLog(logObj);
-      console.log("Log sent");
-      console.log(logObj);
-    }
+    const logObj = {
+      contentId: id,
+      date: new Date().toISOString(),
+      wpm: wpm.toString(),
+      type: semanticGameType,
+      complete: completion,
+      // The ones below are not needed by the backend
+      phase,
+      wpmFloat: wpm,
+      pastLogs,
+    };
+    createLog(logObj);
+    console.log("Log sent");
+    console.log(logObj);
+
+    history.push(logObj);
+    this.setState({
+      history: history,
+    });
   };
 
   deleteText = () => {
@@ -155,28 +182,104 @@ class TypingPage extends Component {
   };
 
   updatePhase = () => {
-    const { phase, phaseCounter } = this.state;
+    const { phase, phaseCounter, done } = this.state;
+    if (phase === null) {
+      this.setState({
+        phase: "Practice",
+        phaseCounter: 1,
+      });
+      return "Practice";
+    }
+
+    if (!done) {
+      return phase;
+    }
+
     const newCounter = phaseCounter + 1;
-    if (phase === "Practice" && newCounter === this.phaseLen[phase]) {
+    if (phase === "Practice" && phaseCounter === this.phaseLen[phase]) {
       this.setState({
         phase: "Train",
-        phaseCounter: 0,
+        phaseCounter: 1,
       });
-    } else if (phase === "Train" && newCounter === this.phaseLen[phase]) {
+      return "Train";
+    } else if (phase === "Train" && phaseCounter === this.phaseLen[phase]) {
       this.setState({
         phase: "Test",
-        phaseCounter: 0,
+        phaseCounter: 1,
       });
-    } else if (phase === "Test" && newCounter === this.phaseLen[phase]) {
+      return "Test";
+    } else if (phase === "Test" && phaseCounter === this.phaseLen[phase]) {
       this.setState({
         phase: "Review",
         phaseCounter: 0,
       });
+      return "Review";
     } else {
       this.setState({
         phaseCounter: newCounter,
       });
+      return phase;
     }
+  };
+
+  handleReview = () => {
+    const { history } = this.state;
+    console.log(history);
+    const practice = history.filter(el => el.phase === "Practice");
+    const train = history.filter(el => el.phase === "Train");
+    const test = history
+      .filter(el => el.phase === "Test")
+      .sort((e1, e2) => e2.contentId - e1.contentId);
+
+    const practiceIdArr = practice.map(el => el.contentId);
+    const trainIdArr = train.map(el => el.contentId);
+    const testIdArr = test.map(el => el.contentId);
+
+    const testAvgPastWpm = test.map(
+      el =>
+        el.pastLogs.reduce((acc, curr) => acc + parseFloat(curr.wpm, 10), 0) /
+        el.pastLogs.length
+    );
+
+    const practiceIds = practiceIdArr.join(",");
+    const trainIds = trainIdArr.join(",");
+    const testIds = testIdArr.join(",");
+    const pastTestWpm = testAvgPastWpm.join(",");
+
+    const practiceWpm =
+      practice.reduce((acc, curr) => acc + curr.wpmFloat, 0) / practice.length;
+    const trainWpm =
+      train.reduce((acc, curr) => acc + curr.wpmFloat, 0) / train.length;
+    const testWpm =
+      test.reduce((acc, curr) => acc + curr.wpmFloat, 0) / test.length;
+
+    const totalWpm =
+      history.reduce((acc, curr) => acc + curr.wpmFloat, 0) / history.length;
+
+    const testWpmDelta =
+      (test.reduce((acc, el) => acc + el.wpmFloat, 0) -
+        testAvgPastWpm.reduce((acc, el) => acc + el, 0)) /
+      test.length;
+
+    const logObj = {
+      date: new Date().toISOString(),
+      practiceIds,
+      practiceWpm,
+      trainIds,
+      trainWpm,
+      testIds,
+      testWpm,
+      testWpmDelta,
+      pastTestWpm,
+      totalWpm,
+    };
+    console.log(logObj);
+    createSessionLog(logObj);
+
+    logObj.testAvgPastWpm = testAvgPastWpm;
+    logObj.test = test;
+
+    return logObj;
   };
 
   handleTypedText = (event, { value }) => {
@@ -252,6 +355,67 @@ class TypingPage extends Component {
     );
   };
 
+  renderReview = () => {
+    const {
+      trainWpm,
+      testWpm,
+      testWpmDelta,
+      totalWpm,
+      test,
+      testAvgPastWpm,
+    } = this.handleReview();
+
+    return (
+      <div>
+        <Table sortable fixed celled size="large" compact>
+          <Table.Header>
+            <Table.Row>
+              <Table.HeaderCell>Train WPM</Table.HeaderCell>
+              <Table.HeaderCell>Test WPM</Table.HeaderCell>
+              <Table.HeaderCell>Total WPM</Table.HeaderCell>
+              <Table.HeaderCell>Test WPM Delta</Table.HeaderCell>
+            </Table.Row>
+          </Table.Header>
+          <Table.Body key={0}>
+            <Table.Row>
+              <Table.Cell>{trainWpm}</Table.Cell>
+              <Table.Cell>{testWpm}</Table.Cell>
+              <Table.Cell>{totalWpm}</Table.Cell>
+              <Table.Cell>{testWpmDelta}</Table.Cell>
+            </Table.Row>
+          </Table.Body>
+        </Table>
+
+        <Table sortable fixed celled size="large" compact>
+          <Table.Header>
+            <Table.Row>
+              <Table.HeaderCell />
+              {test.map(el => (
+                <Table.HeaderCell>{"Id: " + el.contentId}</Table.HeaderCell>
+              ))}
+            </Table.Row>
+          </Table.Header>
+          <Table.Body key={0}>
+            <Table.Row>
+              <Table.Cell>{"Test WPM"}</Table.Cell>
+              {test.map(el => (
+                <Table.Cell>{el.wpm}</Table.Cell>
+              ))}
+            </Table.Row>
+          </Table.Body>
+          <Table.Body key={1}>
+            <Table.Row>
+              <Table.Cell>{"Past Avg WPM"}</Table.Cell>
+              {testAvgPastWpm.map(el => (
+                <Table.Cell>{el}</Table.Cell>
+              ))}
+            </Table.Row>
+          </Table.Body>
+        </Table>
+      </div>
+    );
+  };
+
   render() {
     const {
       index,
@@ -279,55 +443,67 @@ class TypingPage extends Component {
 
     return (
       <Container>
-        <Segment style={{ fontSize: "25px" }} textAlign="left">
-          <p>
-            <span>{"Training Mode"}</span>
-            <br />
-            <span>
-              {"Current Phase: " +
-                phase +
-                " " +
-                phaseCounter +
-                "/" +
-                this.phaseLen[phase]}
-            </span>
-            <br />
-            <span>{title}</span>
-            <br />
-            <span>{"ID: " + id}</span>
-          </p>
-        </Segment>
-        <Segment style={{ fontSize: "30px" }} textAlign="left">
-          <p>
-            <span>{prev}</span>
-            <span style={currWrong ? wrong : correct}>{curr}</span>
-            <span>{next}</span>
-          </p>
-        </Segment>
-        <Form>
-          <Form.Field>
-            <Input
-              size="large"
-              style={{ fontSize: "25px" }}
-              disabled={done}
-              type="text"
-              value={typedText}
-              onChange={this.handleTypedText}
-              ref={input => {
-                this.input = input;
-              }}
-            />
-          </Form.Field>
-        </Form>
+        {phase !== "Review" ? (
+          <div>
+            <Segment style={{ fontSize: "25px" }} textAlign="left">
+              <p>
+                <span>{"Training Mode"}</span>
+                <br />
+                <span>
+                  {"Current Phase: " +
+                    phase +
+                    " " +
+                    phaseCounter +
+                    "/" +
+                    this.phaseLen[phase]}
+                </span>
+                <br />
+                <span>{title}</span>
+                <br />
+                <span>{"ID: " + id}</span>
+              </p>
+            </Segment>
+            <Segment style={{ fontSize: "30px" }} textAlign="left">
+              <p>
+                <span>{prev}</span>
+                <span style={currWrong ? wrong : correct}>{curr}</span>
+                <span>{next}</span>
+              </p>
+            </Segment>
+            <Form>
+              <Form.Field>
+                <Input
+                  size="large"
+                  style={{ fontSize: "25px" }}
+                  disabled={done}
+                  type="text"
+                  value={typedText}
+                  onChange={this.handleTypedText}
+                  ref={input => {
+                    this.input = input;
+                  }}
+                />
+              </Form.Field>
+            </Form>
+          </div>
+        ) : (
+          <div>
+            <Segment style={{ fontSize: "25px" }} textAlign="left">
+              <p>
+                <span>{"Training Mode"}</span>
+                <br />
+                <span>{"Current Phase: " + phase}</span>
+              </p>
+            </Segment>
+            {this.renderReview()}
+          </div>
+        )}
         {/* {done && <p style={{ fontSize: "25px" }}>{this.getWpm()} wpm</p>} */}
         {/* {done &&
           this.state.pastLogs &&
           this.state.pastLogs.length > 0 &&
           this.renderHistoryTable()} */}
         <br />
-        <Button disabled={!done} color="green" onClick={this.newText}>
-          New Text
-        </Button>
         <Button color="red" onClick={this.deleteText}>
           Delete Text
         </Button>
