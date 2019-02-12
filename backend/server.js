@@ -103,4 +103,39 @@ app.get("/Log/:id", (req, res) => {
     });
 });
 
+// Create Session log
+app.post("/SessionLog", (req, res) => {
+  const {
+    date,
+    practiceIds,
+    practiceWpm,
+    trainIds,
+    trainWpm,
+    testIds,
+    testWpm,
+    testWpmDelta,
+    pastTestWpm,
+    totalWpm,
+  } = req.body;
+  const query = `INSERT INTO train_sess values(null, (?), (?), (?), (?), (?), (?), (?), (?), (?), (?))`;
+  db.insert(query, [
+    date,
+    practiceIds,
+    practiceWpm,
+    trainIds,
+    trainWpm,
+    testIds,
+    testWpm,
+    pastTestWpm,
+    testWpmDelta,
+    totalWpm,
+  ])
+    .then(response => {
+      res.send(response);
+    })
+    .catch(err => {
+      res.send({ status: "Failure" });
+    });
+});
+
 app.listen(port, () => console.log(`Listening on port ${port}`));
