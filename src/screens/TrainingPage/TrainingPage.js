@@ -48,8 +48,8 @@ class TypingPage extends Component {
 
   phaseLen = {
     Practice: 1,
-    Train: 3,
-    Test: 6,
+    Train: 2,
+    Test: 4,
     Review: 1,
   };
 
