@@ -27,6 +27,7 @@ CREATE TABLE train_sess (
   train_wpm text NOT NULL,
   test_ids text NOT NULL,
   test_wpm text NOT NULL,
+  test_past_wpm text NOT NULL,
   test_wpm_delta integer NOT NULL,
   total_wpm text NOT NULL
 )
