@@ -39,6 +39,7 @@ class TypingPage extends Component {
     autoRetry: false,
     gameType: "normal",
     pastLogs: null,
+    correctLetters: 0,
   };
 
   componentDidMount() {
@@ -76,6 +77,7 @@ class TypingPage extends Component {
           currWrong: false,
           startTime: null,
           endTime: null,
+          correctLetters: 0,
           typedText: "",
           pastLogs: typetext.data,
         });
@@ -92,6 +94,7 @@ class TypingPage extends Component {
             currWrong: false,
             startTime: null,
             endTime: null,
+            correctLetters: 0,
             typedText: "",
             pastLogs: data,
           });
@@ -101,16 +104,13 @@ class TypingPage extends Component {
   };
 
   getWpm = () => {
-    const { startTime, endTime, text, index, typedText } = this.state;
+    const { startTime, endTime, correctLetters } = this.state;
     const totalTime = ((endTime || new Date()) - startTime) / 1000;
-    const letters =
-      text
-        .slice(0, Math.max(0, index))
-        .reduce((acc, curr) => acc + curr.length, 0) +
-      typedText.length -
-      1;
     return (
-      cleanNumber((letters / totalTime / charPerWord) * secondsPerMinute, 2) | 0
+      cleanNumber(
+        (correctLetters / totalTime / charPerWord) * secondsPerMinute,
+        2
+      ) | 0
     );
   };
 
@@ -120,7 +120,7 @@ class TypingPage extends Component {
       return;
     }
     const semanticGameType = gameType === "ghost" ? "normal" : gameType;
-    const completion = (index === text.length - 1) | 0;
+    const completion = (index === text.length) | 0;
     const wpm = this.getWpm();
     if (wpm > 30) {
       const logObj = {
@@ -150,48 +150,66 @@ class TypingPage extends Component {
       text,
       gameType,
       autoRetry,
+      correctLetters,
     } = this.state;
     if (startTime === null || (index === 0 && typedText === "")) {
+      // Start new text
       this.setState({
         startTime: new Date(),
       });
     }
     if (value === text[index] + " ") {
+      // Finish a word
       this.setState({
         index: index + 1,
         typedText: "",
         currWrong: false,
+        correctLetters: correctLetters + text[index].length + 1,
       });
     } else if (value === " " && typedText === "") {
+      // Null case of space on empty
       this.setState({
         typedText: "",
       });
     } else if (index === text.length - 1 && value === text[index]) {
-      this.setState({
-        index: index + 1,
-        typedText: "",
-        currWrong: false,
-        done: true,
-        endTime: new Date(),
-      });
-      this.sendLog();
-    } else if (gameType === "sudden death" && !text[index].startsWith(value)) {
-      if (autoRetry) {
-        this.sendLog();
-        this.setState({
-          index: 0,
+      // Finish text
+      this.setState(
+        {
+          index: index + 1,
           typedText: "",
-        });
-      } else {
-        this.setState({
-          typedText: value,
-          currWrong: true,
+          currWrong: false,
           done: true,
           endTime: new Date(),
-        });
-        this.sendLog();
+          correctLetters: correctLetters + text[index].length,
+        },
+        this.sendLog
+      );
+    } else if (gameType === "sudden death" && !text[index].startsWith(value)) {
+      // Sudden death loss
+      if (autoRetry) {
+        this.setState(
+          {
+            index: 0,
+            typedText: "",
+            endTime: new Date(),
+            correctLetters: correctLetters + typedText.length - 1,
+          },
+          this.sendLog
+        );
+      } else {
+        this.setState(
+          {
+            typedText: value,
+            currWrong: true,
+            done: true,
+            endTime: new Date(),
+            correctLetters: correctLetters + typedText.length - 1,
+          },
+          this.sendLog
+        );
       }
     } else {
+      // Fallthrough case
       this.setState({
         typedText: value,
         currWrong: !text[index].startsWith(value),
@@ -219,10 +237,7 @@ class TypingPage extends Component {
     const { pastLogs } = this.state;
     let totalWPM = 0;
     pastLogs.map(log => (totalWPM = totalWPM + parseInt(log.wpm)));
-    // NEED TO DEBUG
-    // const totalWPM = pastLogs.reduce(
-    //   (log1, log2) => {parseInt(log1.wpm) + parseInt(log2.wpm)}
-    // );
+
     return (
       <Table sortable fixed celled size="large" compact>
         <Table.Header>
