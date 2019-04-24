@@ -106,6 +106,7 @@ class TypingPage extends Component {
   getWpm = () => {
     const { startTime, endTime, correctLetters } = this.state;
     const totalTime = ((endTime || new Date()) - startTime) / 1000;
+    console.log(totalTime);
     return (
       cleanNumber(
         (correctLetters / totalTime / charPerWord) * secondsPerMinute,

@@ -38,6 +38,7 @@ def graph_data(dates, wpms):
     # bar = plt.bar(dates, wpms, width=.5)
     ax = plt.subplot(111)
     ax.xaxis_date()
+    ax.set_ylim(0, 120)
 
 
 def process_data(data):
